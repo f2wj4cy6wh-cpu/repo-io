@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>repo.io finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column; a search console up top, the "stack" of picks as the hero result, then the full ranked list. */
+:root {
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --ink: #141a2b;
+  --muted: #5b6479;
+  --line: #dde2ec;
+  --accent: #2f4fd8;
+  --accent-soft: #e6ebff;
+  --code-bg: #eef1f7;
+  --beginner: #1f7a4d;
+  --intermediate: #a8650b;
+  --expert: #b0324a;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1320; --surface: #171c2c; --ink: #e8ebf4; --muted: #9aa3b8; --line: #2a3147;
+    --accent: #8fa6ff; --accent-soft: #1f2849; --code-bg: #10141f;
+    --beginner: #5fd39a; --intermediate: #f0b65a; --expert: #ff8aa0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1320; --surface: #171c2c; --ink: #e8ebf4; --muted: #9aa3b8; --line: #2a3147;
+  --accent: #8fa6ff; --accent-soft: #1f2849; --code-bg: #10141f;
+  --beginner: #5fd39a; --intermediate: #f0b65a; --expert: #ff8aa0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.brand { font: 800 30px/1 var(--display); letter-spacing: -0.02em; }
+.brand span { color: var(--accent); }
+.sub { color: var(--muted); max-width: 62ch; margin: 0; }
+.sub a { color: var(--accent); }
+
+.console { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.console label { font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+#q { width: 100%; font: 500 18px/1.3 var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+#q:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.examples { font-size: 13px; color: var(--muted); }
+.examples button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+h2 { font: 600 20px/1.2 var(--display); margin: 0; text-wrap: balance; }
+.section { display: grid; gap: 12px; }
+.section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.count { font: 400 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.stack { display: grid; gap: 10px; counter-reset: pick; }
+.pick { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.stack .pick { border-color: var(--accent); }
+.pick-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.type { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); background: var(--accent-soft); border-radius: 5px; padding: 2px 7px; }
+.lvl { font: 500 11px var(--mono); letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.lvl::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.lvl.beginner { color: var(--beginner); } .lvl.intermediate { color: var(--intermediate); } .lvl.expert { color: var(--expert); }
+.name { font: 600 16px/1.3 var(--body); margin: 0; }
+.name a { color: var(--ink); text-decoration: none; }
+.name a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.summary { margin: 0; color: var(--muted); max-width: 70ch; overflow-wrap: anywhere; }
+.why { margin: 0; font-size: 13px; color: var(--ink); }
+.why b { font-weight: 600; }
+.install { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.install pre { flex: 1; min-width: 0; margin: 0; background: var(--code-bg); border-radius: 8px; padding: 8px 10px; font: 12.5px/1.5 var(--mono); overflow-x: auto; white-space: pre; color: var(--ink); }
+.copy { font: 500 12px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 0 12px; cursor: pointer; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags span { font: 12px var(--mono); color: var(--muted); }
+.empty { color: var(--muted); padding: 16px; border: 1px dashed var(--line); border-radius: 12px; }
+#more { justify-self: start; }
+footer { font-size: 13px; color: var(--muted); }
+footer a { color: var(--accent); }
+@media (max-width: 520px) { .install { flex-direction: column; } .copy { padding: 8px; } .brand { font-size: 26px; } }
+@media (prefers-reduced-motion: no-preference) { .pick { transition: border-color .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">repo<span>.io</span></div>
+    <p class="sub">Say what you're building. You get a short stack of ready-to-install Claude Code skills, agents, commands, rules, hooks and MCP servers from <a href="https://github.com/affaan-m/ECC" target="_blank" rel="noopener">Everything Claude Code</a>, with the reason each one was picked.</p>
+  </header>
+
+  <form class="console" id="form" autocomplete="off">
+    <label for="q">What are you working on?</label>
+    <input id="q" type="search" value="add tests and a security review to my Django API">
+    <div class="row" id="levels" role="group" aria-label="Your level"></div>
+    <div class="row" id="types" role="group" aria-label="Item types"></div>
+    <div class="examples" id="examples">Try:</div>
+  </form>
+
+  <section class="section" aria-labelledby="stack-h">
+    <div class="section-head"><h2 id="stack-h">Your stack</h2><span class="count" id="stack-count"></span></div>
+    <div class="stack" id="stack"><div class="empty">Loading the ECC catalog…</div></div>
+  </section>
+
+  <section class="section" aria-labelledby="all-h">
+    <div class="section-head"><h2 id="all-h">Other matches</h2><span class="count" id="all-count"></span></div>
+    <div class="stack" id="all"></div>
+    <button class="chip" id="more" type="button" hidden>Show more</button>
+  </section>
+
+  <footer id="foot">Catalog imported from Everything Claude Code (MIT).</footer>
+</div>
+
+<script>
+const TYPES = [["skill","Skills"],["agent","Agents"],["command","Commands"],["rule","Rules"],["hook","Hooks"],["mcp","MCP servers"],["plugin","Bundles"]];
+const LEVELS = [["any","Any level"],["beginner","Beginner"],["intermediate","Intermediate"],["expert","Expert"]];
+const EXAMPLES = ["review my pull requests", "set up a Next.js frontend", "plan a new feature", "speed up a slow Postgres query", "build an AI agent with evals"];
+const STOP = new Set("a an and the to my of for in on with i want need help me how do is it this that be use using add set up get make our your some from".split(" "));
+const ALIAS = { tests: "test", testing: "test", reviews: "review", reviewing: "review", go: "golang", ts: "typescript", js: "javascript", pr: "review", prs: "review", "next.js": "nextjs", next: "nextjs", postgresql: "postgres", secure: "security", vuln: "security", docs: "doc", documentation: "doc", bug: "debug", bugs: "debug", slow: "performance", speed: "performance", ai: "llm" };
+
+let items = [], state = { level: "any", types: new Set(TYPES.map(t => t[0])), shown: 8 };
+const $ = id => document.getElementById(id);
+
+function tokens(s) {
+  return s.toLowerCase().split(/[^a-z0-9+#.]+/).filter(w => w && !STOP.has(w)).map(w => ALIAS[w] || w.replace(/(ing|es|s)$/, m => w.length > 5 ? "" : m));
+}
+function prep(it) {
+  it._slug = it.slug.toLowerCase();
+  it._name = it.name.toLowerCase();
+  it._sum = it.summary.toLowerCase();
+  it._tags = it.tags.join(" ");
+  it._words = new Set(it._slug.split("-"));
+  it._langs = [...it._words].filter(w => LANGS.has(w));
+  return it;
+}
+const LANGS = new Set("python django flask fastapi typescript javascript react nextjs vue nuxt angular svelte golang rust java kotlin swift cpp csharp dotnet fsharp ruby rails php laravel perl dart flutter elixir springboot quarkus arkts".split(" "));
+let idf = {};
+function score(it, qs, qLangs) {
+  let s = 0; const hits = [];
+  for (const w of qs) {
+    let h = 0;
+    if (it._words.has(w)) h += 6; else if (w.length >= 4 && it._slug.includes(w)) h += 4;
+    if (it._name.includes(w)) h += 2;
+    if (it._tags.includes(w)) h += 3;
+    if (it._sum.includes(w)) h += 1.5;
+    if (h) { s += h * (idf[w] || 1); hits.push(w); }
+  }
+  if (!s) return null;
+  s *= 0.6 + 0.4 * (hits.length / qs.length);
+  // Asked about one stack, so tools named for a different language or framework drop down.
+  if (qLangs.length && it._langs.length && !it._langs.some(l => qLangs.includes(l))) s *= 0.4;
+  if (state.level !== "any") s *= it.level === state.level ? 1.25 : (state.level === "beginner" && it.level === "expert" ? 0.5 : 0.9);
+  if (it.type === "hook") s *= 0.8;
+  return { it, s, hits };
+}
+function rank(q) {
+  const qs = [...new Set(tokens(q))];
+  if (!qs.length) return [];
+  const qLangs = qs.filter(w => LANGS.has(w));
+  return items.filter(it => state.types.has(it.type)).map(it => score(it, qs, qLangs)).filter(Boolean).sort((a, b) => b.s - a.s);
+}
+// A stack is the best pick of each kind, so the result is a set of tools that work together rather than five near-duplicates.
+function buildStack(ranked) {
+  const order = ["skill", "agent", "command", "rule", "mcp", "hook"], seen = new Set(), stack = [];
+  const top = ranked[0] ? ranked[0].s : 0;
+  for (const r of ranked) {
+    if (stack.length >= 5) break;
+    if (seen.has(r.it.type) || r.s < top * 0.3) continue;
+    seen.add(r.it.type); stack.push(r);
+  }
+  // Fewer than three kinds matched well, so top up with the next strongest picks.
+  for (const r of ranked) {
+    if (stack.length >= 3) break;
+    if (!stack.includes(r)) stack.push(r);
+  }
+  stack.sort((a, b) => order.indexOf(a.it.type) - order.indexOf(b.it.type));
+  return stack;
+}
+const TYPE_LABEL = Object.fromEntries(TYPES.map(([k, v]) => [k, v.replace(/s$/, "").replace("MCP server", "MCP")]));
+const ROLE = { skill: "teaches Claude how to do the work", agent: "a specialist you can hand the task to", command: "a slash command to run it on demand", rule: "always-on standards Claude follows", mcp: "connects Claude to an outside tool", hook: "runs automatically around Claude's actions", plugin: "installs the whole collection" };
+
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function card(r, inStack) {
+  const it = r.it, cmd = it.install.claude_code;
+  const why = inStack ? `<p class="why"><b>Why:</b> ${ROLE[it.type]}; matches ${r.hits.map(h => `“${esc(h)}”`).join(", ")}.</p>` : "";
+  return `<article class="pick">
+    <div class="pick-top"><span class="type">${TYPE_LABEL[it.type]}</span><span class="lvl ${it.level}">${it.level}</span></div>
+    <h3 class="name"><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.name)}</a></h3>
+    <p class="summary">${esc(it.summary)}</p>${why}
+    <div class="install"><pre>${esc(cmd)}</pre><button class="copy" type="button" data-cmd="${esc(cmd)}">Copy</button></div>
+    ${it.install.note ? `<p class="summary" style="font-size:13px">${esc(it.install.note)}</p>` : ""}
+  </article>`;
+}
+function render() {
+  const ranked = rank($("q").value), stack = buildStack(ranked), ids = new Set(stack.map(r => r.it.id));
+  const rest = ranked.filter(r => !ids.has(r.it.id));
+  $("stack").innerHTML = stack.length ? stack.map(r => card(r, true)).join("") : `<div class="empty">No matches yet. Describe the project or task in a few words, for example “Rust CLI with tests”.</div>`;
+  $("stack-count").textContent = stack.length ? `${stack.length} picks` : "";
+  $("all").innerHTML = rest.slice(0, state.shown).map(r => card(r, false)).join("");
+  $("all-count").textContent = `${rest.length} more of ${items.length}`;
+  $("more").hidden = rest.length <= state.shown;
+}
+function chips() {
+  $("levels").innerHTML = LEVELS.map(([k, v]) => `<button type="button" class="chip" data-level="${k}" aria-pressed="${state.level === k}">${v}</button>`).join("");
+  $("types").innerHTML = TYPES.map(([k, v]) => `<button type="button" class="chip" data-type="${k}" aria-pressed="${state.types.has(k)}">${v}</button>`).join("");
+}
+$("examples").insertAdjacentHTML("beforeend", " " + EXAMPLES.map(e => `<button type="button" data-ex="${esc(e)}">${esc(e)}</button>`).join(" · "));
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.level) { state.level = b.dataset.level; chips(); render(); }
+  else if (b.dataset.type) { const t = b.dataset.type; state.types.has(t) && state.types.size > 1 ? state.types.delete(t) : state.types.add(t); chips(); render(); }
+  else if (b.dataset.ex) { $("q").value = b.dataset.ex; state.shown = 8; render(); }
+  else if (b.id === "more") { state.shown += 12; render(); }
+  else if (b.dataset.cmd) {
+    const done = () => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1400); };
+    const pre = b.previousElementSibling;
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected"; };
+    try { navigator.clipboard.writeText(b.dataset.cmd).then(done, fallback); } catch { fallback(); }
+  }
+});
+let t; $("q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { state.shown = 8; render(); }, 120); });
+$("form").addEventListener("submit", e => { e.preventDefault(); render(); });
+chips();
+fetch("../catalog/ecc.json").then(r => r.json()).then(d => {
+  items = d.items.map(prep);
+  // Rarer words say more about what someone wants, so they weigh more.
+  const df = {};
+  for (const it of items) for (const w of new Set(tokens(it.slug + " " + it.summary + " " + it._tags))) df[w] = (df[w] || 0) + 1;
+  for (const w in df) idf[w] = Math.max(0.6, Math.log(items.length / df[w]) / 2);
+  const c = d.counts, s = d.source;
+  $("foot").innerHTML = `Catalog: ${items.length} items imported from <a href="https://github.com/${s.repo}" target="_blank" rel="noopener">Everything Claude Code</a> v${s.version} (MIT), commit <code>${s.commit.slice(0, 7)}</code>. ${c.skill} skills, ${c.agent} agents, ${c.command} commands, ${c.rule} rule packs, ${c.hook} hooks, ${c.mcp} MCP servers. Levels are estimated from each item's name and type.`;
+  render();
+}).catch(() => { $("stack").innerHTML = `<div class="empty">The catalog file didn't load. Reload the page to try again.</div>`; });
+</script>
+</body>
+</html>
